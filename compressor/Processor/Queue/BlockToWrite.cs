@@ -25,17 +25,7 @@ namespace compressor.Processor.Queue
 
         public void WaitPreviousBlockProcessedAndAddedToQueue(CancellationToken cancellationToken)
         {
-            try
-            {
-                Awaiter.WaitPreviousBlockProcessedAndAddedToQueueToWrite(cancellationToken);
-            }
-            catch(OperationCanceledException)
-            {
-                if(!cancellationToken.IsCancellationRequested)
-                {
-                    throw;
-                }
-            }
+            Awaiter.WaitPreviousBlockProcessedAndAddedToQueueToWrite(cancellationToken);
         }
     }
 }

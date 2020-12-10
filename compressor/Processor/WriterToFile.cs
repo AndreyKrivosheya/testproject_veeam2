@@ -17,16 +17,14 @@ namespace compressor.Processor
 
         protected sealed override void WriteBlock(BlockToWrite block, CancellationToken cancellationToken)
         {
-            if(!cancellationToken.IsCancellationRequested)
+            cancellationToken.ThrowIfCancellationRequested();
+            try
             {
-                try
-                {
-                    StreamToWrite.Write(block.Data, 0, block.Data.Length);
-                }
-                catch(Exception e)
-                {
-                    throw new ApplicationException("Failed to write block to output file", e);
-                }
+                StreamToWrite.Write(block.Data, 0, block.Data.Length);
+            }
+            catch(Exception e)
+            {
+                throw new ApplicationException("Failed to write block to output file", e);
             }
         }
         

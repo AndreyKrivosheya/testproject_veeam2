@@ -18,37 +18,51 @@ namespace compressor.Processor
         {
             try
             {
-                BlockToProcess lastBlock = null;
-                while(!cancellationToken.IsCancellationRequested)
+                try
                 {
-                    var blockLengthBuffer = new byte[sizeof(Int64)];
-                    var blockLengthActuallyRead = StreamToRead.Read(blockLengthBuffer, 0, blockLengthBuffer.Length);
-                    if(blockLengthActuallyRead != 0)
+                    BlockToProcess lastBlock = null;
+                    while(true)
                     {
-                        if(blockLengthActuallyRead != sizeof(Int64))
+                        cancellationToken.ThrowIfCancellationRequested();
+
+                        var blockLengthBuffer = new byte[sizeof(Int64)];
+                        var blockLengthActuallyRead = StreamToRead.Read(blockLengthBuffer, 0, blockLengthBuffer.Length);
+                        if(blockLengthActuallyRead != 0)
                         {
-                            throw new InvalidDataException("Failed to read next block size, read less bytes then block size length occupies");
-                        }
-                        else
-                        {
-                            var blockBuffer = new byte[BitConverter.ToInt64(blockLengthBuffer, 0)];
-                            var blockActuallyRead = StreamToRead.Read(blockBuffer, 0, blockBuffer.Length);
-                            if(blockActuallyRead < blockBuffer.Length)
+                            if(blockLengthActuallyRead != sizeof(Int64))
                             {
-                                throw new InvalidDataException("Failed to read next block, read less bytes then block occupies");
+                                throw new InvalidDataException("Failed to read next block size, read less bytes then block size length occupies");
                             }
                             else
                             {
-                                lastBlock = new BlockToProcess(lastBlock, BitConverter.ToInt32(blockBuffer, blockBuffer.Length - sizeof(Int32)), blockBuffer);
-                                QueueToProcess.TryAdd(lastBlock, Timeout.Infinite, cancellationToken);
+                                cancellationToken.ThrowIfCancellationRequested();
+
+                                var blockBuffer = new byte[BitConverter.ToInt64(blockLengthBuffer, 0)];
+                                var blockActuallyRead = StreamToRead.Read(blockBuffer, 0, blockBuffer.Length);
+                                if(blockActuallyRead < blockBuffer.Length)
+                                {
+                                    throw new InvalidDataException("Failed to read next block, read less bytes then block occupies");
+                                }
+                                else
+                                {
+                                    lastBlock = new BlockToProcess(lastBlock, BitConverter.ToInt32(blockBuffer, blockBuffer.Length - sizeof(Int32)), blockBuffer);
+                                    QueueToProcess.TryAdd(lastBlock, Timeout.Infinite, cancellationToken);
+                                }
                             }
                         }
+                        else
+                        {
+                            // finished reading input
+                            QueueToProcess.CompleteAdding();
+                            break;
+                        }
                     }
-                    else
+                }
+                catch(OperationCanceledException)
+                {
+                    if(!cancellationToken.IsCancellationRequested)
                     {
-                        // finished reading input
-                        QueueToProcess.CompleteAdding();
-                        break;
+                        throw;
                     }
                 }
             }

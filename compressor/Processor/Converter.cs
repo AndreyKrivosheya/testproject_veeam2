@@ -23,48 +23,47 @@ namespace compressor.Processor
         
         public virtual void GetBlocksForProcessingConvertAndQueueForWriting(CancellationToken cancellationToken)
         {
-            BlockToWrite lastBlock = null;
-            while(!cancellationToken.IsCancellationRequested)
+            try
             {
-                BlockToProcess block = null;
-                if(!QueueToProcess.TryTake(out block, Timeout.Infinite, cancellationToken))
+                BlockToWrite lastBlock = null;
+                while(true)
                 {
-                    if(QueueToProcess.IsCompleted)
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    BlockToProcess block = null;
+                    if(!QueueToProcess.TryTake(out block, Timeout.Infinite, cancellationToken))
                     {
-                        // queue to process is completed
-                        break;
-                    }
-                    else
-                    {
-                        if(!cancellationToken.IsCancellationRequested)
+                        if(QueueToProcess.IsCompleted)
                         {
-                            throw new InvalidOperationException("Failed to get next block for processing while queue to process is not empty");
+                            // queue to process is completed
+                            break;
+                        }
+                        else
+                        {
+                            if(!cancellationToken.IsCancellationRequested)
+                            {
+                                throw new InvalidOperationException("Failed to get next block for processing while queue to process is not empty");
+                            }
                         }
                     }
+
+                    QueueToWrite.TryAdd(lastBlock = ConvertBlockToProcessToBlockToWrite(block), Timeout.Infinite, cancellationToken);
                 }
 
-                if(!cancellationToken.IsCancellationRequested)
-                {
-                    lastBlock = ConvertBlockToProcessToBlockToWrite(block);
-                }
-                if(!cancellationToken.IsCancellationRequested)
-                {
-                    lastBlock.WaitPreviousBlockProcessedAndAddedToQueue(cancellationToken);
-                }
-                if(!cancellationToken.IsCancellationRequested)
-                {
-                    QueueToWrite.TryAdd(lastBlock, Timeout.Infinite, cancellationToken);
-                }
-            }
-
-            if(!cancellationToken.IsCancellationRequested)
-            {
+                cancellationToken.ThrowIfCancellationRequested();
                 if(lastBlock != null)
                 {
                     if(lastBlock.Last)
                     {
                         QueueToWrite.CompleteAdding();
                     }
+                }
+            }
+            catch(OperationCanceledException)
+            {
+                if(!cancellationToken.IsCancellationRequested)
+                {
+                    throw;
                 }
             }
         }

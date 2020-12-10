@@ -14,11 +14,9 @@ namespace compressor.Common.Collections
         bool IsAddingCompleted { get; }
 
         bool TryAdd(T item, int millisecondsTimeout, CancellationToken cancellationToken);
-        bool TryAdd(T item, int millisecondsTimeout);
 
         void CompleteAdding();
        
         bool TryTake(out T item, int millisecondsTimeout, CancellationToken cancellationToken);
-        bool TryTake(out T item, int millisecondsTimeout);
     }
 }

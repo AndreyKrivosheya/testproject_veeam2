@@ -18,29 +18,25 @@ namespace compressor.Processor
         protected sealed override void WriteBlock(BlockToWrite block, CancellationToken cancellationToken)
         {
             // write block data length
-            if(!cancellationToken.IsCancellationRequested)
+            cancellationToken.ThrowIfCancellationRequested();
+            try
             {
-                try
-                {
-                    var blockLengthBuffer = BitConverter.GetBytes((Int64)block.Data.Length);
-                    StreamToWrite.Write(blockLengthBuffer, 0, blockLengthBuffer.Length);                
-                }
-                catch(Exception e)
-                {
-                    throw new ApplicationException("Failed to write block length to archive", e);
-                }
+                var blockLengthBuffer = BitConverter.GetBytes((Int64)block.Data.Length);
+                StreamToWrite.Write(blockLengthBuffer, 0, blockLengthBuffer.Length);                
+            }
+            catch(Exception e)
+            {
+                throw new ApplicationException("Failed to write block length to archive", e);
             }
             // write block data
-            if(!cancellationToken.IsCancellationRequested)
+            cancellationToken.ThrowIfCancellationRequested();
+            try
             {
-                try
-                {
-                    StreamToWrite.Write(block.Data, 0, block.Data.Length);
-                }
-                catch(Exception e)
-                {
-                    throw new ApplicationException("Failed to write block to archive", e);
-                }
+                StreamToWrite.Write(block.Data, 0, block.Data.Length);
+            }
+            catch(Exception e)
+            {
+                throw new ApplicationException("Failed to write block to archive", e);
             }
         }
         

@@ -25,49 +25,60 @@ namespace compressor.Processor
         
         protected virtual void WriteBlocks(IEnumerable<BlockToWrite> blocks, CancellationToken cancellationToken)
         {
-            foreach(var block in blocks)
+            try
             {
-                if(cancellationToken.IsCancellationRequested)
+                foreach(var block in blocks)
                 {
-                    break;
+                    cancellationToken.ThrowIfCancellationRequested();
+                    WriteBlock(block, cancellationToken);
                 }
-
-                WriteBlock(block, cancellationToken);
+                StreamToWrite.Flush();
             }
-            StreamToWrite.Flush();
+            catch(OperationCanceledException)
+            {
+                if(!cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+            }
         }
 
         public virtual void GetBlocksForWritingAndWrite(CancellationToken cancellationToken)
         {
-            while(!cancellationToken.IsCancellationRequested)
+            try
             {
-                var blocks = new LinkedList<BlockToWrite>();
-                while(blocks.Count < Settings.MaxBlocksToWriteAtOnce && !cancellationToken.IsCancellationRequested)
+                while(true)
                 {
-                    BlockToWrite block;
-                    if(!QueueToWrite.TryTake(out block, Timeout.Infinite, cancellationToken))
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    var blocks = new LinkedList<BlockToWrite>();
+                    while(blocks.Count < Settings.MaxBlocksToWriteAtOnce)
                     {
-                        if(QueueToWrite.IsCompleted)
+                        cancellationToken.ThrowIfCancellationRequested();
+
+                        BlockToWrite block;
+                        if(!QueueToWrite.TryTake(out block, Timeout.Infinite, cancellationToken))
                         {
-                            // queue to write is completed
-                            break;
+                            if(QueueToWrite.IsCompleted)
+                            {
+                                // queue to write is completed
+                                break;
+                            }
+                            else
+                            {
+                                if(!cancellationToken.IsCancellationRequested)
+                                {
+                                    throw new InvalidOperationException("Failed to get next block for writting while queue to write is not empty");
+                                }
+                            }
                         }
                         else
                         {
-                            if(!cancellationToken.IsCancellationRequested)
-                            {
-                                throw new InvalidOperationException("Failed to get next block for writting while queue to write is not empty");
-                            }
+                            blocks.AddLast(block);
                         }
                     }
-                    else
-                    {
-                        blocks.AddLast(block);
-                    }
-                }
 
-                if(!cancellationToken.IsCancellationRequested)
-                {
+                    cancellationToken.ThrowIfCancellationRequested();
                     if(blocks.Count < 1)
                     {
                         // all blocks are written
@@ -77,6 +88,13 @@ namespace compressor.Processor
                     {
                         WriteBlocks(blocks, cancellationToken);
                     }
+                }
+            }
+            catch(OperationCanceledException)
+            {
+                if(!cancellationToken.IsCancellationRequested)
+                {
+                    throw;
                 }
             }
         }

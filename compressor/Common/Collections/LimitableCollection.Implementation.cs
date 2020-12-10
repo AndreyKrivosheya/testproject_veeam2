@@ -212,10 +212,6 @@ namespace compressor.Common.Collections
 
             return TryAddToCollection(item, millisecondsTimeout, cancellationToken);
         }
-        public bool TryAdd(T item, int millisecondsTimeout)
-        {
-            return TryAdd(item, millisecondsTimeout, CancellationToken.None);
-        }
 
         public void CompleteAdding()
         {
@@ -354,10 +350,6 @@ namespace compressor.Common.Collections
             {
                 return false;
             }
-        }
-        public bool TryTake(out T item, int millisecondsTimeout)
-        {
-            return TryTake(out item, millisecondsTimeout, CancellationToken.None);
         }
     }
 }

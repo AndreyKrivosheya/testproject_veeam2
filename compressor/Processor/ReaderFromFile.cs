@@ -18,28 +18,42 @@ namespace compressor.Processor
         {
             try
             {
-                BlockToProcess lastBlock = null;
-                while(!cancellationToken.IsCancellationRequested)
+                try
                 {
-                    var blockBuffer = new byte[Settings.BlockSize];
-                    var blockActuallyRead = StreamToRead.Read(blockBuffer, 0, blockBuffer.Length);
-                    if(blockActuallyRead != 0)
+                    BlockToProcess lastBlock = null;
+                    while(true)
                     {
-                        var blockBufferActuallyRead = blockBuffer;
-                        if(blockActuallyRead < blockBuffer.Length)
+                        cancellationToken.ThrowIfCancellationRequested();
+
+                        var blockBuffer = new byte[Settings.BlockSize];
+                        var blockActuallyRead = StreamToRead.Read(blockBuffer, 0, blockBuffer.Length);
+                        if(blockActuallyRead != 0)
                         {
-                            blockBufferActuallyRead = new byte[blockActuallyRead];
-                            Array.Copy(blockBuffer, 0, blockBufferActuallyRead, 0, blockBufferActuallyRead.Length);
+                            cancellationToken.ThrowIfCancellationRequested();
+
+                            var blockBufferActuallyRead = blockBuffer;
+                            if(blockActuallyRead < blockBuffer.Length)
+                            {
+                                blockBufferActuallyRead = new byte[blockActuallyRead];
+                                Array.Copy(blockBuffer, 0, blockBufferActuallyRead, 0, blockBufferActuallyRead.Length);
+                            }
+                            
+                            lastBlock = new BlockToProcess(lastBlock, blockBufferActuallyRead.Length, blockBufferActuallyRead);
+                            QueueToProcess.TryAdd(lastBlock, Timeout.Infinite, cancellationToken);
                         }
-                        
-                        lastBlock = new BlockToProcess(lastBlock, blockBufferActuallyRead.Length, blockBufferActuallyRead);
-                        QueueToProcess.TryAdd(lastBlock, Timeout.Infinite, cancellationToken);
+                        else
+                        {
+                            // finished reading input
+                            QueueToProcess.CompleteAdding();
+                            break;
+                        }
                     }
-                    else
+                }
+                catch(OperationCanceledException)
+                {
+                    if(!cancellationToken.IsCancellationRequested)
                     {
-                        // finished reading input
-                        QueueToProcess.CompleteAdding();
-                        break;
+                        throw;
                     }
                 }
             }

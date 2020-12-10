@@ -75,10 +75,6 @@ namespace compressor.Processor.Queue
                 }
             }
         }
-        public virtual bool TryAdd(TBlock block, int millisecondsTimeout)
-        {
-            return Implementation.TryAdd(block, millisecondsTimeout);
-        }
 
         public void CompleteAdding()
         {
@@ -103,10 +99,6 @@ namespace compressor.Processor.Queue
                     return false;
                 }
             }
-        }
-        public bool TryTake(out TBlock block, int millisecondsTimeout)
-        {
-            return Implementation.TryTake(out block, millisecondsTimeout);
         }
     }
 }
