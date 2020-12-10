@@ -119,7 +119,7 @@ namespace compressor.Common.Collections
                             break;
                         case 1:
                             // canceled through external cancellation token
-                            throw new OperationCanceledException();
+                            throw new OperationCanceledException(cancellationToken);
                         case 2:
                         default:
                             // canceled through internal cancellation token (due to concurrent with CompleteAdding)
@@ -163,7 +163,7 @@ namespace compressor.Common.Collections
                                     }
                                     if(cancellationToken.IsCancellationRequested)
                                     {
-                                        throw new OperationCanceledException();
+                                        throw new OperationCanceledException(cancellationToken);
                                     }
                                     
                                     if(ConcurrentCollection.TryAdd(item))
@@ -202,7 +202,7 @@ namespace compressor.Common.Collections
 
             if(cancellationToken.IsCancellationRequested)
             {
-                throw new OperationCanceledException();
+                throw new OperationCanceledException(cancellationToken);
             }
 
             if(IsAddingCompleted)
@@ -239,6 +239,8 @@ namespace compressor.Common.Collections
                     {
                         awaiter.SpinOnce();
                     }
+                    
+                    return;
                 }
                 else
                 {
@@ -259,6 +261,8 @@ namespace compressor.Common.Collections
                         }
                         // wake up adders
                         ProducersCancellationTokenSource.Cancel();
+                        
+                        return;
                     }
                 }
                 awaiter.SpinOnce();
@@ -272,7 +276,7 @@ namespace compressor.Common.Collections
 
             if(cancellationToken.IsCancellationRequested)
             {
-                throw new OperationCanceledException();
+                throw new OperationCanceledException(cancellationToken);
             }
             if(IsCompleted)
             {
@@ -298,10 +302,10 @@ namespace compressor.Common.Collections
                             break;
                         case 1:
                             // canceled through external cancellation token
-                            throw new OperationCanceledException();
+                            throw new OperationCanceledException(cancellationToken);
                         case 2:
                         default:
-                            // canceled throuhg internal cancellation token due to CompleteAdding
+                            // canceled through internal cancellation token due to CompleteAdding
                             return false;
                     }
                 }
@@ -309,22 +313,41 @@ namespace compressor.Common.Collections
 
             if(waitSucceeded)
             {
+                var takeSucceeded = false;
+                var takeFailed = true;
                 try
                 {
-                    if(!ConcurrentCollection.TryTake(out item))
+                    if(cancellationToken.IsCancellationRequested)
+                    {
+                        throw new OperationCanceledException(cancellationToken);
+                    }
+
+                    takeSucceeded = ConcurrentCollection.TryTake(out item);
+                    takeFailed = false;
+                    if(!takeSucceeded)
                     {
                         throw new InvalidOperationException("Failed to take out of underlaying collection");
                     }
                     else
                     {
-                        ProducersSemaphore.Release();
                         return true;
                     }
                 }
-                catch(Exception)
+                finally
                 {
-                    ConsumersSemaphore.Release();
-                    throw;
+                    if(takeSucceeded)
+                    {
+                        ProducersSemaphore.Release();
+                    }
+                    else if(takeFailed)
+                    {
+                        ConsumersSemaphore.Release();
+                    }
+
+                    if (IsCompleted)
+                    {
+                        ConsumersCancellationTokenSource.Cancel();
+                    }
                 }
             }
             else
