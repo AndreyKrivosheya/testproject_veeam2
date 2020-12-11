@@ -1,7 +1,6 @@
 using System;
 using System.IO;
 using System.IO.Compression;
-using System.Linq;
 using System.Threading;
 
 using compressor.Processor.Queue;
@@ -40,7 +39,10 @@ namespace compressor.Processor
                         else
                         {
                             // all bytes but the header
-                            return outStreamRaw.ToArray().Skip(GZipStreamHelper.Header.Length).ToArray();
+                            var compressedOriginal = outStreamRaw.ToArray();
+                            var compressedHeaderStripped = new byte[compressedOriginal.Length - GZipStreamHelper.Header.Length];
+                            Array.Copy(compressedOriginal, GZipStreamHelper.Header.Length, compressedHeaderStripped, 0, compressedHeaderStripped.Length);
+                            return compressedHeaderStripped;
                         }
                     }
                     else

@@ -100,7 +100,7 @@ namespace compressor.Processor
                                     {
                                         // cancel converters
                                         cancellationTokenSourceConverters.Cancel();
-                                        // cancel writer/readee
+                                        // cancel writer/reader
                                         switch(justFinishedAwaitableIndex)
                                         {
                                             case 0:

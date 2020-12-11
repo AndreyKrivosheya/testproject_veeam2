@@ -1,7 +1,6 @@
 using System;
 using System.IO;
 using System.IO.Compression;
-using System.Linq;
 using System.Threading;
 
 using compressor.Processor.Queue;
@@ -20,7 +19,10 @@ namespace compressor.Processor
         {
             try
             {
-                using(var inStream = new GZipStream(new MemoryStream(Enumerable.Concat(GZipStreamHelper.Header, data).ToArray()), CompressionMode.Decompress))
+                var dataWithHeader = new byte[GZipStreamHelper.Header.Length + data.Length];
+                Array.Copy(GZipStreamHelper.Header, 0, dataWithHeader, 0, GZipStreamHelper.Header.Length);
+                Array.Copy(data, 0, dataWithHeader, GZipStreamHelper.Header.Length, data.Length);
+                using(var inStream = new GZipStream(new MemoryStream(dataWithHeader), CompressionMode.Decompress))
                 {
                     using(var outStream = new MemoryStream(BitConverter.ToInt32(data, data.Length - sizeof(Int32))))
                     {
